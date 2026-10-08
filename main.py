@@ -7,7 +7,7 @@ from typing import NoReturn
 import requests
 
 from analysis import load_rates, summarize
-from fetch import fetch_rates
+from fetch import DataError, fetch_rates
 from notify import NotifyError, format_summary, send_summary
 from storage import connect, mark_run_ok, mark_sent, save_rates, was_run_ok, was_sent
 
@@ -52,7 +52,7 @@ def main():
 
     try:
         result = fetch_rates()
-    except requests.RequestException as error:
+    except (requests.RequestException, DataError) as error:
         fail(f"Не удалось получить курсы: {error}", args.alert_after)
 
     day = result["date"]

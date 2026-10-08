@@ -11,6 +11,9 @@ from analysis import load_rates, summarize
 from storage import connect
 
 SEND_URL = "https://api.telegram.org/bot{token}/sendMessage"
+# Такое изменение за день бывает в кризис, но чаще означает сбой источника.
+# Сводку не блокируем, а только предупреждаем
+UNUSUAL_CHANGE_PCT = 20
 
 
 def format_summary(rates: pd.DataFrame, summary: pd.DataFrame) -> str:
@@ -18,7 +21,12 @@ def format_summary(rates: pd.DataFrame, summary: pd.DataFrame) -> str:
     previous_date = rates.index[-2].strftime("%d.%m.%Y")
 
     lines = []
+    warnings = []
     for code, row in summary.iterrows():
+        if abs(row["day_change_pct"]) > UNUSUAL_CHANGE_PCT:
+            warnings.append(
+                f"⚠️ {code}: изменение {row['day_change_pct']:+.2f}% за день, стоит сверить с cbr.ru"
+            )
         arrow = "▲" if row["day_change"] > 0 else "▼" if row["day_change"] < 0 else "="
         week = "—" if pd.isna(row["week_change_pct"]) else f"{row['week_change_pct']:+.2f}%"
         lines.append(
@@ -27,11 +35,14 @@ def format_summary(rates: pd.DataFrame, summary: pd.DataFrame) -> str:
         )
 
     # <pre> выводит текст моноширинным шрифтом, чтобы колонки не съезжали
-    return (
+    text = (
         f"<b>Курсы ЦБ РФ на {latest_date}</b>\n"
         f"Изменение к {previous_date}\n\n"
         "<pre>" + "\n".join(lines) + "</pre>"
     )
+    if warnings:
+        text += "\n\n" + "\n".join(warnings)
+    return text
 
 
 def send_message(token: str, chat_id: str, text: str) -> None:

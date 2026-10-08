@@ -4,7 +4,7 @@ from pathlib import Path
 
 import requests
 
-from fetch import fetch_rates
+from fetch import DataError, fetch_rates
 
 DB_PATH = Path(__file__).parent / "rates.db"
 
@@ -77,7 +77,7 @@ def was_run_ok(conn: sqlite3.Connection, day: str) -> bool:
 def main():
     try:
         result = fetch_rates()
-    except requests.RequestException as error:
+    except (requests.RequestException, DataError) as error:
         print(f"Не удалось получить курсы: {error}", file=sys.stderr)
         sys.exit(1)
 

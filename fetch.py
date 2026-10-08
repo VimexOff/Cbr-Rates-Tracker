@@ -1,3 +1,4 @@
+import math
 import sys
 import time
 from datetime import date
@@ -29,33 +30,54 @@ def get_json(url: str) -> dict:
             time.sleep(RETRY_DELAY)
 
 
+class DataError(ValueError):
+    pass
+
+
+def positive_number(value, field: str) -> float:
+    # bool в Python тоже число, а json пропускает NaN и Infinity, поэтому проверяем явно
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+        raise DataError(f"{field}: ожидалось положительное число, получено {value!r}")
+    return float(value)
+
+
+def parse_date(value) -> str:
+    try:
+        return date.fromisoformat(value[:10]).isoformat()
+    except (TypeError, ValueError):
+        raise DataError(f"Неверная дата в ответе: {value!r}") from None
+
+
 def fetch_rates(day: date | None = None) -> dict:
     url = API_URL if day is None else ARCHIVE_URL.format(day=day)
     data = get_json(url)
 
-    rates = []
-    for code in CURRENCIES:
-        item = data["Valute"][code]
-        # ЦБ может давать курс не за 1 единицу, а, например, за 10 юаней
-        nominal = item["Nominal"]
-        rates.append({
-            "code": code,
-            "name": item["Name"],
-            "value": item["Value"] / nominal,
-            "previous": item["Previous"] / nominal,
-        })
+    try:
+        rates = []
+        for code in CURRENCIES:
+            item = data["Valute"][code]
+            # ЦБ может давать курс не за 1 единицу, а, например, за 10 юаней
+            nominal = positive_number(item["Nominal"], f"{code}.Nominal")
+            rates.append({
+                "code": code,
+                "name": item["Name"],
+                "value": positive_number(item["Value"], f"{code}.Value") / nominal,
+                "previous": positive_number(item["Previous"], f"{code}.Previous") / nominal,
+            })
 
-    return {
-        "date": data["Date"][:10],
-        "previous_date": data["PreviousDate"][:10],
-        "rates": rates,
-    }
+        return {
+            "date": parse_date(data["Date"]),
+            "previous_date": parse_date(data["PreviousDate"]),
+            "rates": rates,
+        }
+    except (KeyError, TypeError) as error:
+        raise DataError(f"Неожиданный формат ответа ({type(error).__name__}: {error})") from None
 
 
 def main():
     try:
         result = fetch_rates()
-    except requests.RequestException as error:
+    except (requests.RequestException, DataError) as error:
         print(f"Не удалось получить курсы: {error}", file=sys.stderr)
         sys.exit(1)
 

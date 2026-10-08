@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 import requests
 
-from fetch import fetch_rates
+from fetch import DataError, fetch_rates
 from storage import connect, save_rates
 
 # Пауза между запросами, чтобы не нагружать сервер
@@ -37,7 +37,7 @@ def main():
                     print(f"{day}: ошибка — {error}", file=sys.stderr)
                     failed += 1
                 continue
-            except requests.RequestException as error:
+            except (requests.RequestException, DataError) as error:
                 print(f"{day}: ошибка — {error}", file=sys.stderr)
                 failed += 1
                 continue
