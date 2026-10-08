@@ -23,7 +23,11 @@ def fetch_rates() -> dict:
             "previous": item["Previous"] / nominal,
         })
 
-    return {"date": data["Date"], "rates": rates}
+    return {
+        "date": data["Date"][:10],
+        "previous_date": data["PreviousDate"][:10],
+        "rates": rates,
+    }
 
 
 def main():
@@ -33,7 +37,7 @@ def main():
         print(f"Не удалось получить курсы: {error}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Курсы ЦБ РФ на {result['date'][:10]}")
+    print(f"Курсы ЦБ РФ на {result['date']}")
     for rate in result["rates"]:
         change = rate["value"] - rate["previous"]
         print(f"{rate['code']}  {rate['name']:<12} {rate['value']:>9.4f}  ({change:+.4f})")
