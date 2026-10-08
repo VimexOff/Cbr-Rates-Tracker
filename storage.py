@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS sent_summaries (
 """
 
 
-def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
+def connect(db_path: Path | str = DB_PATH) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.executescript(SCHEMA)
     return conn
