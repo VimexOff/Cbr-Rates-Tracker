@@ -43,6 +43,32 @@ def send_message(token: str, chat_id: str, text: str) -> None:
     response.raise_for_status()
 
 
+class NotifyError(Exception):
+    pass
+
+
+def send_summary(text: str) -> None:
+    load_dotenv(Path(__file__).parent / ".env")
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        raise NotifyError("Не заданы TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID. Смотри .env.example")
+
+    # Токен входит в адрес запроса, а requests показывает адрес в тексте ошибки.
+    # Поэтому наружу отдаём только описание от Telegram или тип ошибки,
+    # а `from None` убирает исходное исключение из трейсбека
+    try:
+        send_message(token, chat_id, text)
+    except requests.HTTPError as error:
+        try:
+            description = error.response.json().get("description", "")
+        except ValueError:
+            description = ""
+        raise NotifyError(f"Telegram вернул ошибку {error.response.status_code}: {description}") from None
+    except requests.RequestException as error:
+        raise NotifyError(f"Не удалось связаться с Telegram ({type(error).__name__})") from None
+
+
 def main():
     parser = argparse.ArgumentParser(description="Отправка сводки курсов в Telegram")
     parser.add_argument("--dry-run", action="store_true", help="только показать сообщение, не отправлять")
@@ -65,26 +91,10 @@ def main():
         print(text)
         return
 
-    load_dotenv(Path(__file__).parent / ".env")
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if not token or not chat_id:
-        print("Не заданы TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID. Смотри .env.example", file=sys.stderr)
-        sys.exit(1)
-
-    # Токен входит в адрес запроса, а requests показывает адрес в тексте ошибки.
-    # Поэтому печатаем только описание от Telegram или тип ошибки, без самого исключения
     try:
-        send_message(token, chat_id, text)
-    except requests.HTTPError as error:
-        try:
-            description = error.response.json().get("description", "")
-        except ValueError:
-            description = ""
-        print(f"Telegram вернул ошибку {error.response.status_code}: {description}", file=sys.stderr)
-        sys.exit(1)
-    except requests.RequestException as error:
-        print(f"Не удалось связаться с Telegram ({type(error).__name__})", file=sys.stderr)
+        send_summary(text)
+    except NotifyError as error:
+        print(error, file=sys.stderr)
         sys.exit(1)
 
     print("Сводка отправлена")

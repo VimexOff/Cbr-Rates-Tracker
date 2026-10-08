@@ -15,13 +15,17 @@ CREATE TABLE IF NOT EXISTS rates (
     name  TEXT NOT NULL,
     value REAL NOT NULL,
     PRIMARY KEY (date, code)
-)
+);
+
+CREATE TABLE IF NOT EXISTS sent_summaries (
+    date TEXT PRIMARY KEY
+);
 """
 
 
 def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
-    conn.execute(SCHEMA)
+    conn.executescript(SCHEMA)
     return conn
 
 
@@ -44,6 +48,16 @@ def save_rates(conn: sqlite3.Connection, result: dict) -> int:
             rows,
         )
     return len(rows)
+
+
+def was_sent(conn: sqlite3.Connection, day: str) -> bool:
+    row = conn.execute("SELECT 1 FROM sent_summaries WHERE date = ?", (day,)).fetchone()
+    return row is not None
+
+
+def mark_sent(conn: sqlite3.Connection, day: str) -> None:
+    with conn:
+        conn.execute("INSERT OR IGNORE INTO sent_summaries (date) VALUES (?)", (day,))
 
 
 def main():
