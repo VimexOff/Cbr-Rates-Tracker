@@ -40,12 +40,14 @@ cp .env.example .env
 Linux, cron (`crontab -e`):
 
 ```
-0 10,12,14 * * * cd /path/to/Cbr-Rates-Tracker && .venv/bin/python main.py >> rates.log 2>&1
+0 10,12,14 * * * cd /path/to/Cbr-Rates-Tracker && .venv/bin/python main.py --alert-after 14 >> rates.log 2>&1
 ```
 
 На macOS то же самое делается через launchd: в `~/Library/LaunchAgents` кладётся plist с `StartCalendarInterval`.
 
 Запусков несколько, чтобы сводка пришла, даже если в 10:00 сайт ЦБ или Telegram не ответил. Сводка за одну дату отправляется только один раз, остальные запуски ничего не делают.
+
+С `--alert-after 14` запуск в 14:00 или позже при ошибке пишет о ней в тот же Telegram-чат, но только если за день не было ни одного удачного запуска. Если скрипт не запустился совсем (например, компьютер выключен) или недоступен сам Telegram, предупреждения не будет, ошибка останется в логе.
 
 ## Как устроено
 

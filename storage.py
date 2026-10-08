@@ -20,6 +20,10 @@ CREATE TABLE IF NOT EXISTS rates (
 CREATE TABLE IF NOT EXISTS sent_summaries (
     date TEXT PRIMARY KEY
 );
+
+CREATE TABLE IF NOT EXISTS successful_runs (
+    day TEXT PRIMARY KEY
+);
 """
 
 
@@ -58,6 +62,16 @@ def was_sent(conn: sqlite3.Connection, day: str) -> bool:
 def mark_sent(conn: sqlite3.Connection, day: str) -> None:
     with conn:
         conn.execute("INSERT OR IGNORE INTO sent_summaries (date) VALUES (?)", (day,))
+
+
+def mark_run_ok(conn: sqlite3.Connection, day: str) -> None:
+    with conn:
+        conn.execute("INSERT OR IGNORE INTO successful_runs (day) VALUES (?)", (day,))
+
+
+def was_run_ok(conn: sqlite3.Connection, day: str) -> bool:
+    row = conn.execute("SELECT 1 FROM successful_runs WHERE day = ?", (day,)).fetchone()
+    return row is not None
 
 
 def main():

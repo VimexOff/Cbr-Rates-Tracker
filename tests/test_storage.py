@@ -1,6 +1,6 @@
 import pytest
 
-from storage import connect, mark_sent, save_rates, was_sent
+from storage import connect, mark_run_ok, mark_sent, save_rates, was_run_ok, was_sent
 
 
 @pytest.fixture
@@ -41,3 +41,12 @@ def test_sent_summaries(conn):
 
     assert was_sent(conn, "2026-10-08")
     assert conn.execute("SELECT COUNT(*) FROM sent_summaries").fetchone()[0] == 1
+
+
+def test_successful_runs(conn):
+    assert not was_run_ok(conn, "2026-10-08")
+
+    mark_run_ok(conn, "2026-10-08")
+
+    assert was_run_ok(conn, "2026-10-08")
+    assert not was_run_ok(conn, "2026-10-09")
