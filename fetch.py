@@ -1,18 +1,20 @@
 import sys
 import time
+from datetime import date
 
 import requests
 
 API_URL = "https://www.cbr-xml-daily.ru/daily_json.js"
+ARCHIVE_URL = "https://www.cbr-xml-daily.ru/archive/{day:%Y/%m/%d}/daily_json.js"
 CURRENCIES = ("USD", "EUR", "CNY")
 ATTEMPTS = 3
 RETRY_DELAY = 5
 
 
-def get_json() -> dict:
+def get_json(url: str) -> dict:
     for attempt in range(1, ATTEMPTS + 1):
         try:
-            response = requests.get(API_URL, timeout=10)
+            response = requests.get(url, timeout=10)
             response.raise_for_status()
             return response.json()
         # Повторяем только сетевые сбои: ошибку вроде 404 повтор не исправит
@@ -27,8 +29,9 @@ def get_json() -> dict:
             time.sleep(RETRY_DELAY)
 
 
-def fetch_rates() -> dict:
-    data = get_json()
+def fetch_rates(day: date | None = None) -> dict:
+    url = API_URL if day is None else ARCHIVE_URL.format(day=day)
+    data = get_json(url)
 
     rates = []
     for code in CURRENCIES:
